@@ -17,7 +17,7 @@ const corsOrigin = process.env.NODE_ENV === "production"
 
 app.use(
   cors({
-    origin: corsOrigin,
+    origin: "http://localhost:5173",
     credentials: true,
   }),
 );

@@ -37,8 +37,8 @@ const register = async (req, res) => {
       .status(201)
       .cookie("jwt", token, {
         httpOnly: true,
-        secure: false,
-        sameSite: "lax",
+        secure: true,
+        sameSite: "strict",
         maxAge: 7 * 24 * 60 * 60 * 1000,
       })
       .json({
@@ -81,20 +81,19 @@ const login = async (req, res) => {
       expiresIn: "7d",
     });
 
-    res
-      .status(200)
-      .cookie("jwt", token, {
-        httpOnly: true,
-        secure: false,
-        sameSite: "lax",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      })
-      .json({
-        _id: user._id,
-        username: user.username,
-        email: user.email,
-        bio: user.bio,
-      });
+    res.cookie("jwt", token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.status(200).json({
+      _id: user._id,
+      username: user.username,
+      email: user.email,
+      bio: user.bio,
+    });
   } catch (err) {
     console.log("Login error: " + err.message);
     res.status(500).json({ message: "Error during login" });
@@ -152,4 +151,4 @@ const updateProfile = async (req, res) => {
   }
 };
 
-export {register, login, logout, getMe, updateProfile}
+export { register, login, logout, getMe, updateProfile };

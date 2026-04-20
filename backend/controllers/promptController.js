@@ -74,7 +74,8 @@ export const getPromptStats = async (req, res) => {
 // Get a single prompt by its ID
 export const getPromptById = async (req, res) => {
   try {
-    const prompt = await Prompt.findById(req.params.id).populate("author");
+    const prompt = await Prompt.findById(req.params.id)
+      .populate("author", "-password");
 
     if (!prompt) {
       return res.status(404).json({ message: "Prompt not found" });
@@ -118,7 +119,7 @@ export const createPrompt = async (req, res) => {
       author: req.user._id,
     });
 
-    await newPrompt.populate("author", "username");
+    await newPrompt.populate("author", "username", "-password");
 
     res.status(201).json(newPrompt);
   } catch (err) {
