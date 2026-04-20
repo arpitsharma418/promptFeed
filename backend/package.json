@@ -1,5 +1,5 @@
 {
-  "name": "prompt-directory-backend",
+  "name": "backend",
   "version": "1.0.0",
   "description": "Backend for Prompt Directory - A social media for AI prompts",
   "main": "server.js",
