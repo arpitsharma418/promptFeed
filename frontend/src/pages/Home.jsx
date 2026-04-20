@@ -3,178 +3,98 @@ import { Link } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import PromptCard from "../components/PromptCard";
-import MaterialIcon from "../components/MaterialIcon";
 
-const Home = () => {
+function Home() {
   const { user, API } = useAuth();
-  const [featuredPrompts, setFeaturedPrompts] = useState([]);
-  const [stats, setStats] = useState({
-    promptsShared: 0,
-    categories: 0,
-    users: 0,
-  });
+  const [prompts, setPrompts] = useState([]);
+  const [stats, setStats] = useState({ promptsShared: 0, categories: 0, users: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchFeatured = async () => {
+    const getPrompts = async () => {
       try {
-        const [promptsRes, statsRes] = await Promise.all([
-          axios.get(`${API}/prompts?sort=popular`),
-          axios.get(`${API}/prompts/stats/overview`),
-        ]);
+        const promptsRes = await axios.get(`${API}/prompts?sort=popular`);
+        setPrompts(promptsRes.data.data.slice(0, 6));
 
-        setFeaturedPrompts(promptsRes.data.slice(0, 6));
+        const statsRes = await axios.get(`${API}/prompts/stats/overview`);
         setStats(statsRes.data);
       } catch (err) {
-        console.error("Error fetching prompts:", err);
+        console.log("Error fetching data: " + err.message);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchFeatured();
+    getPrompts();
   }, [API]);
 
-  const formatStat = (value) => {
-    if (!value) return "0";
-    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M+`;
-    if (value >= 1000) return `${(value / 1000).toFixed(1)}K+`;
-    return `${value}`;
-  };
-
   return (
-    <div className="app-shell">
-      <section className="mx-auto max-w-4xl px-4 pb-16 pt-20 text-center">
-        <div className="hero-badge mb-6 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs text-violet-500">
-          <MaterialIcon name="auto_awesome" className="h-3.5 w-3.5" filled={true} />
-          The prompt-sharing network for modern AI teams
-        </div>
-
-        <h1 className="mb-4 text-4xl font-bold leading-tight theme-text md:text-6xl">
-          Discover and Share
-          <br />
-          <span className="text-violet-500">Better AI Prompts</span>
+    <div className="bg-white min-h-screen">
+      {/* Hero section */}
+      <div className="sm:max-w-2xl mx-auto px-4 py-20 text-center">
+         <div className="text-xs my-5 border border-blue-200 w-fit mx-auto px-3 py-1 rounded-full bg-blue-50 text-blue-700">
+          The prompt sharing network for modern AI teams
+         </div>
+        <h1 className="text-4xl sm:text-6xl font-bold text-gray-800 mb-4">
+          Discover and Share <span className="text-blue-600">Better AI Prompts</span>
         </h1>
-
-        <p className="mx-auto mb-8 max-w-xl text-lg theme-text-secondary md:text-xl">
-          A community-driven directory of high-quality prompts for ChatGPT, Claude, Gemini, and more.
+        <p className="text-base sm:text-xl text-gray-600 mb-8 sm:max-w-2xl mx-auto">
+          A simple community for people to share and find useful prompts for ChatGPT, Claude, and other AI tools.
         </p>
 
-        <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link to="/explore" className="btn-primary w-full sm:w-auto">
-            <span className="inline-flex items-center gap-2">
-              <MaterialIcon name="travel_explore" className="h-4 w-4" filled={true} />
-              Explore Prompts
-            </span>
+        <div className="flex gap-4 justify-center flex-wrap">
+          <Link to="/explore" className="btn-primary">
+            Explore Prompts
           </Link>
           {!user && (
-            <Link to="/register" className="btn-secondary w-full sm:w-auto">
+            <Link to="/register" className="btn-secondary">
               Join PromptFeed
             </Link>
           )}
           {user && (
-            <Link to="/create" className="btn-secondary w-full sm:w-auto">
-              <span className="inline-flex items-center gap-2">
-                <MaterialIcon name="add_circle" className="h-4 w-4" filled={true} />
-                Share a Prompt
-              </span>
+            <Link to="/create" className="btn-secondary">
+              Share a Prompt
             </Link>
           )}
         </div>
-      </section>
+      </div>
 
-      <section className="page-section-muted border-y">
-        <div className="mx-auto grid max-w-4xl grid-cols-3 gap-4 px-4 py-8 text-center">
-          {[
-            { label: "Prompts Shared", value: formatStat(stats.promptsShared) },
-            { label: "Categories", value: formatStat(stats.categories) },
-            { label: "Users", value: formatStat(stats.users) },
-          ].map((stat) => (
-            <div key={stat.label}>
-              <div className="text-2xl font-bold theme-text">{stat.value}</div>
-              <div className="mt-1 text-xs theme-text-muted">{stat.label}</div>
+      {/* Stats section */}
+      <div className="border py-16 bg-gray-100">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="grid grid-cols-3 gap-8 text-center">
+            <div>
+              <div className="text-3xl font-bold text-gray-800">{stats.promptsShared}</div>
+              <div className="text-gray-600 text-sm mt-1">Prompts Shared</div>
             </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-6xl px-4 py-14">
-        <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-xl font-semibold theme-text">Popular Prompts</h2>
-          <Link to="/explore" className="text-sm text-violet-500 transition-colors hover:text-violet-400">
-            View all
-          </Link>
-        </div>
-
-        {loading ? (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="skeleton-block animate-pulse rounded-xl p-5">
-                <div className="skeleton-line mb-3 h-4 w-3/4 rounded"></div>
-                <div className="skeleton-line mb-2 h-3 w-full rounded"></div>
-                <div className="skeleton-line h-3 w-2/3 rounded"></div>
-              </div>
-            ))}
+            <div>
+              <div className="text-3xl font-bold text-gray-800">{stats.categories}</div>
+              <div className="text-gray-600 text-sm mt-1">Categories</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-gray-800">{stats.users}</div>
+              <div className="text-gray-600 text-sm mt-1">Users</div>
+            </div>
           </div>
-        ) : featuredPrompts.length > 0 ? (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {featuredPrompts.map((prompt) => (
+        </div>
+      </div>
+
+      {/* Featured prompts */}
+      <div className="max-w-6xl mx-auto px-4 py-20">
+        <h2 className="text-2xl font-bold text-gray-800 mb-8">Popular Prompts</h2>
+        
+        {loading ? (
+          <div className="text-center text-gray-500">Loading...</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {prompts.map((prompt) => (
               <PromptCard key={prompt._id} prompt={prompt} />
             ))}
           </div>
-        ) : (
-          <div className="empty-state">
-            <div className="mb-3 flex justify-center text-violet-500">
-              <MaterialIcon name="travel_explore" className="h-10 w-10" filled={true} />
-            </div>
-            <p className="mb-4 theme-text-secondary">No prompts yet. Be the first!</p>
-            {user ? (
-              <Link to="/create" className="btn-primary">
-                Create First Prompt
-              </Link>
-            ) : (
-              <Link to="/register" className="btn-primary">
-                Join and Share
-              </Link>
-            )}
-          </div>
         )}
-      </section>
-
-      <section className="page-section-muted border-t">
-        <div className="mx-auto max-w-4xl px-4 py-14 text-center">
-          <h2 className="mb-10 text-2xl font-bold theme-text">How It Works</h2>
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-            {[
-              {
-                icon: "travel_explore",
-                title: "Explore",
-                desc: "Browse prompts by category, search by keyword, or see what the community is using most.",
-              },
-              {
-                icon: "content_copy",
-                title: "Copy and Use",
-                desc: "Grab any prompt in one click and use it in ChatGPT, Claude, or any other AI tool.",
-              },
-              {
-                icon: "add_circle",
-                title: "Share Yours",
-                desc: "Publish your own prompts, help others, and learn what resonates with the community.",
-              },
-            ].map((step) => (
-              <div key={step.title} className="flex flex-col items-center gap-3">
-                <span className="rounded-full bg-violet-500/10 p-3 text-violet-500">
-                  <MaterialIcon name={step.icon} className="h-5 w-5" filled={true} />
-                </span>
-                <h3 className="font-semibold theme-text">{step.title}</h3>
-                <p className="text-sm leading-relaxed theme-text-muted">{step.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      </div>
     </div>
   );
-};
+}
 
 export default Home;

@@ -3,128 +3,124 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 
-const Profile = () => {
+function Profile() {
   const { user, updateUser, API } = useAuth();
   const [editing, setEditing] = useState(false);
-  const [formData, setFormData] = useState({
-    username: user?.username || "",
-    bio: user?.bio || "",
-  });
+  const [username, setUsername] = useState(user?.username || "");
+  const [bio, setBio] = useState(user?.bio || "");
   const [loading, setLoading] = useState(false);
-
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
 
   const handleSave = async () => {
     setLoading(true);
+
     try {
-      const res = await axios.put(`${API}/auth/profile`, formData);
+      const res = await axios.put(`${API}/auth/profile`, { username, bio });
       updateUser(res.data);
       toast.success("Profile updated!");
       setEditing(false);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to update profile");
+      const errorMsg = err.response?.data?.message || "Failed to update";
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
   };
 
   const handleCancel = () => {
-    setFormData({ username: user?.username || "", bio: user?.bio || "" });
+    setUsername(user?.username || "");
+    setBio(user?.bio || "");
     setEditing(false);
   };
 
   return (
-    <div className="app-shell">
-      <div className="mx-auto max-w-xl px-4 py-10">
-        <h1 className="mb-8 text-2xl font-bold theme-text">Your Profile</h1>
+    <div className="bg-white min-h-screen">
+      <div className="max-w-xl mx-auto px-4 py-10">
+        <h1 className="text-3xl font-bold text-gray-800 mb-8">Your Profile</h1>
 
-        <div className="surface-card rounded-2xl p-6 md:p-8">
-          <div className="mb-7 flex items-center gap-4 border-b pb-7 theme-border">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-violet-700 text-2xl font-bold text-white">
+        <div className="border border-gray-200 rounded-lg p-8">
+          {/* User avatar and name section */}
+          <div className="flex items-center gap-4 pb-8 mb-8 border-b border-gray-200">
+            <div className="w-16 h-16 bg-blue-500 text-white rounded-full flex items-center justify-center text-2xl font-bold">
               {user?.username?.charAt(0).toUpperCase()}
             </div>
             <div>
-              <p className="text-lg font-semibold theme-text">{user?.username}</p>
-              <p className="text-sm theme-text-muted">{user?.email}</p>
+              <p className="text-lg font-semibold text-gray-800">{user?.username}</p>
+              <p className="text-gray-600">{user?.email}</p>
             </div>
           </div>
 
           {editing ? (
-            <div className="flex flex-col gap-4">
+            // Edit mode
+            <div className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-sm theme-text-secondary">Username</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
                 <input
                   type="text"
-                  name="username"
-                  value={formData.username}
-                  onChange={handleChange}
-                  className="theme-input compact"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
                 />
               </div>
+
               <div>
-                <label className="mb-1.5 block text-sm theme-text-secondary">
-                  Bio <span className="theme-text-muted">(optional)</span>
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Bio (optional)</label>
                 <textarea
-                  name="bio"
-                  value={formData.bio}
-                  onChange={handleChange}
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
                   placeholder="Tell us about yourself..."
                   rows={3}
                   maxLength={200}
-                  className="theme-input compact resize-none"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
                 />
-                <p className="mt-1 text-right text-xs theme-text-muted">{formData.bio.length}/200</p>
+                <p className="text-right text-xs text-gray-500 mt-1">{bio.length}/200</p>
               </div>
-              <div className="flex gap-3">
-                <button onClick={handleCancel} className="btn-secondary">
+
+              <div className="flex gap-4">
+                <button
+                  onClick={handleCancel}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-800 rounded-lg hover:bg-gray-100 transition"
+                >
                   Cancel
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={loading}
-                  className="btn-primary flex-1 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition disabled:opacity-50"
                 >
-                  {loading ? "Saving..." : "Save Changes"}
+                  {loading ? "Saving..." : "Save"}
                 </button>
               </div>
             </div>
           ) : (
-            <div className="flex flex-col gap-4">
+            // View mode
+            <div className="space-y-4">
               <div>
-                <p className="mb-1 text-xs theme-text-muted">Username</p>
-                <p className="text-sm theme-text">{user?.username}</p>
+                <p className="text-xs text-gray-500 uppercase font-medium mb-1">Username</p>
+                <p className="text-gray-800">{user?.username}</p>
               </div>
+
               <div>
-                <p className="mb-1 text-xs theme-text-muted">Email</p>
-                <p className="text-sm theme-text">{user?.email}</p>
+                <p className="text-xs text-gray-500 uppercase font-medium mb-1">Email</p>
+                <p className="text-gray-800">{user?.email}</p>
               </div>
+
               <div>
-                <p className="mb-1 text-xs theme-text-muted">Bio</p>
-                <p className="text-sm theme-text-secondary">{user?.bio || "No bio yet"}</p>
+                <p className="text-xs text-gray-500 uppercase font-medium mb-1">Bio</p>
+                <p className="text-gray-800">{user?.bio || "No bio yet"}</p>
               </div>
+
               <button
                 onClick={() => setEditing(true)}
-                className="mt-2 w-full rounded-lg border py-2.5 text-sm transition-colors theme-border theme-text-secondary hover:border-violet-500 hover:text-violet-500"
+                className="w-full mt-4 px-4 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-50 transition"
               >
                 Edit Profile
               </button>
             </div>
           )}
         </div>
-
-        <div className="surface-card mt-4 rounded-xl p-5">
-          <p className="mb-3 text-xs font-medium uppercase tracking-wide theme-text-muted">Account</p>
-          <div className="flex items-center justify-between">
-            <p className="text-sm theme-text-secondary">Member since</p>
-            <p className="text-sm theme-text-secondary">{new Date().getFullYear()}</p>
-          </div>
-        </div>
       </div>
     </div>
   );
-};
+}
 
 export default Profile;

@@ -1,34 +1,23 @@
-// Auth Middleware - protects routes that require login
-const jwt = require("jsonwebtoken");
-const User = require("../models/User");
+import jwt from "jsonwebtoken";
+import User from "../models/User.js";
 
-const protect = async (req, res, next) => {
-  let token;
-
-  // Check if token is in the Authorization header
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith("Bearer")
-  ) {
-    try {
-      // Get token from header (format: "Bearer <token>")
-      token = req.headers.authorization.split(" ")[1];
-
-      // Verify the token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-      // Get user from database and attach to request (excluding password)
-      req.user = await User.findById(decoded.id).select("-password");
-
-      next(); // Move to the next middleware/route handler
-    } catch (error) {
-      res.status(401).json({ message: "Not authorized, invalid token" });
-    }
-  }
+export const validate = async (req, res, next) => {
+  const token = req.headers.authorization?.split(" ")[1] || req.cookies?.jwt;
 
   if (!token) {
-    res.status(401).json({ message: "Not authorized, no token provided" });
+    return res.status(401).json({ message: "No token, not authorized" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = await User.findById(decoded.id);
+    
+    if (!req.user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+    
+    next();
+  } catch (err) {
+    return res.status(401).json({ message: "Token is invalid" });
   }
 };
-
-module.exports = { protect };

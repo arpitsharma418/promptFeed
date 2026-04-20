@@ -1,87 +1,107 @@
-// Auth Controller - handles register and login logic
-const jwt = require("jsonwebtoken");
-const User = require("../models/User");
+import jwt from "jsonwebtoken";
+import User from "../models/User.js";
+import bcrypt from "bcryptjs";
 
-// Helper function to generate JWT token
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: "7d", // Token expires in 7 days
-  });
-};
-
-// @desc    Register a new user
-// @route   POST /api/auth/register
-// @access  Public
+// Register
 const register = async (req, res) => {
   const { username, email, password } = req.body;
 
-  // Basic validation
   if (!username || !email || !password) {
     return res.status(400).json({ message: "Please fill in all fields" });
   }
 
   try {
-    // Check if user already exists
-    const userExists = await User.findOne({ $or: [{ email }, { username }] });
+    const userExists = await User.findOne({
+      $or: [{ email: email }, { username: username }],
+    });
+
     if (userExists) {
       return res
         .status(400)
-        .json({ message: "User with this email or username already exists" });
+        .json({ message: "User already exists with that email or username" });
     }
 
-    // Create new user (password is hashed automatically in the model)
-    const user = await User.create({ username, email, password });
-
-    // Send back user data with token
-    res.status(201).json({
-      _id: user._id,
-      username: user.username,
-      email: user.email,
-      bio: user.bio,
-      token: generateToken(user._id),
+    // Create a new User
+    const newUser = await User.create({
+      username: username,
+      email: email,
+      password: password,
     });
-  } catch (error) {
-    console.error("Register error:", error.message);
-    res.status(500).json({ message: "Server error during registration" });
+
+    // create a jwt token
+    const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
+
+    res
+      .status(201)
+      .cookie("jwt", token, {
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      })
+      .json({
+        _id: newUser._id,
+        username: newUser.username,
+        email: newUser.email,
+        bio: newUser.bio,
+      });
+  } catch (err) {
+    console.log("Register error: " + err.message);
+    res.status(500).json({ message: "Error during registration" });
   }
 };
 
-// @desc    Login user
-// @route   POST /api/auth/login
-// @access  Public
+// Login
 const login = async (req, res) => {
   const { email, password } = req.body;
 
-  // Basic validation
   if (!email || !password) {
-    return res.status(400).json({ message: "Please provide email and password" });
+    return res
+      .status(400)
+      .json({ message: "Please provide email and password" });
   }
 
   try {
-    // Find user by email
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: email });
 
-    // Check if user exists and password matches
-    if (user && (await user.matchPassword(password))) {
-      res.json({
+    if (!user) {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    // Check if password matches
+    const passwordMatch = await user.matchPassword(password);
+    if (!passwordMatch) {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    // Create jwt token
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
+
+    res
+      .status(200)
+      .cookie("jwt", token, {
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      })
+      .json({
         _id: user._id,
         username: user.username,
         email: user.email,
         bio: user.bio,
-        token: generateToken(user._id),
       });
-    } else {
-      res.status(401).json({ message: "Invalid email or password" });
-    }
-  } catch (error) {
-    console.error("Login error:", error.message);
-    res.status(500).json({ message: "Server error during login" });
+  } catch (err) {
+    console.log("Login error: " + err.message);
+    res.status(500).json({ message: "Error during login" });
   }
 };
 
-// @desc    Get current user profile
-// @route   GET /api/auth/me
-// @access  Private
+// Get the currently logged in user's profile
 const getMe = async (req, res) => {
   // req.user is set by the protect middleware
   res.json({
@@ -92,28 +112,44 @@ const getMe = async (req, res) => {
   });
 };
 
-// @desc    Update user profile (bio)
-// @route   PUT /api/auth/profile
-// @access  Private
+// Logout - clear cookie
+const logout = (req, res) => {
+  res
+    .clearCookie("jwt", { httpOnly: true, sameSite: "lax" })
+    .json({ message: "Logged out" });
+};
+
+// Update user profile
 const updateProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
-    if (!user) return res.status(404).json({ message: "User not found" });
 
-    user.bio = req.body.bio ?? user.bio;
-    // Allow username update too
-    if (req.body.username) user.username = req.body.username;
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
-    const updated = await user.save();
+    // Update bio
+    if (req.body.bio !== undefined) {
+      user.bio = req.body.bio;
+    }
+
+    // Update username
+    if (req.body.username !== undefined) {
+      user.username = req.body.username;
+    }
+
+    const updatedUser = await user.save();
+
     res.json({
-      _id: updated._id,
-      username: updated.username,
-      email: updated.email,
-      bio: updated.bio,
+      _id: updatedUser._id,
+      username: updatedUser.username,
+      email: updatedUser.email,
+      bio: updatedUser.bio,
     });
-  } catch (error) {
+  } catch (err) {
+    console.log("Update profile error: " + err.message);
     res.status(500).json({ message: "Error updating profile" });
   }
 };
 
-module.exports = { register, login, getMe, updateProfile };
+export {register, login, logout, getMe, updateProfile}

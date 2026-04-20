@@ -1,199 +1,168 @@
 import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
-import { useTheme } from "../context/ThemeContext";
-import MaterialIcon from "./MaterialIcon";
 
-const Navbar = () => {
+function Navbar() {
   const { user, logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
-  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const handleLogout = () => {
-    logout();
-    toast.success("Logged out successfully");
+  const handleLogout = async () => {
+    await logout();
+    toast.success("Logged out");
     navigate("/");
     setMenuOpen(false);
   };
 
-  const handleThemeToggle = () => {
-    toggleTheme();
-  };
-
-  const isActive = (path) => location.pathname === path;
-
-  const navLinkClass = (path) =>
-    `rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-      isActive(path)
-        ? "bg-[var(--bg-soft)] theme-text"
-        : "theme-text-secondary hover:bg-[var(--bg-soft)] hover:text-[var(--text-primary)]"
-    }`;
-
   return (
-    <nav
-      className="sticky top-0 z-50 border-b backdrop-blur"
-      style={{
-        borderColor: "var(--border-color)",
-        backgroundColor: "var(--nav-backdrop)",
-      }}
-    >
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-        <Link to="/" className="flex items-center gap-2 group">
-          <img
-            src="/promptfeed_logo.png"
-            alt="PromptFeed logo"
-            className="h-8 w-8 rounded-md object-cover"
-          />
-          <span className="text-lg font-semibold tracking-tight theme-text">
+    <nav className="sticky top-0 bg-gray-100 border-b border-gray-200">
+      <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+        {/* Logo */}
+        <Link to="/" className="flex items-center gap-2">
+          <div className="w-8 h-8">
+            <img
+              src="/promptfeed_logo.png"
+              alt="logo_img"
+              className="rounded-lg"
+            />
+          </div>
+          <span className="text-lg font-semibold text-gray-800">
             PromptFeed
           </span>
         </Link>
 
-        <div className="hidden items-center gap-1 md:flex">
-          <Link to="/explore" className={navLinkClass("/explore")}>
+        {/* Desktop Navigation */}
+        <div className="hidden md:flex items-center gap-6 text-sm">
+          <Link
+            to="/explore"
+            className="text-gray-700 hover:text-blue-500 transition"
+          >
             Explore
           </Link>
+
           {user && (
             <>
-              <Link to="/my-prompts" className={navLinkClass("/my-prompts")}>
+              <Link
+                to="/my-prompts"
+                className="text-gray-700 hover:text-blue-500 transition"
+              >
                 My Prompts
               </Link>
-              <Link to="/create" className="ml-2 btn-primary !px-4 !py-1.5">
-                <span className="inline-flex items-center gap-2">
-                  <MaterialIcon name="add_circle" className="h-4 w-4" filled={true} />
-                  New Prompt
-                </span>
+              <Link
+                to="/create"
+                className="text-gray-700 hover:text-blue-500 transition"
+              >
+                New Prompt
               </Link>
             </>
           )}
         </div>
 
-        <div className="hidden items-center gap-2 md:flex">
-          <button
-            onClick={handleThemeToggle}
-            className="btn-secondary inline-flex items-center gap-2 !px-3 !py-1.5"
-            type="button"
-            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-          >
-            <MaterialIcon
-              name={theme === "dark" ? "light_mode" : "dark_mode"}
-              className="h-4 w-4"
-              filled={true}
-            />
-            {theme === "dark" ? "Light" : "Dark"}
-          </button>
-
+        {/* User area */}
+        <div className="hidden md:flex items-center gap-2 text-sm">
           {user ? (
-            <div className="flex items-center gap-3">
+            <>
               <Link
                 to="/profile"
-                className="flex items-center gap-2 text-sm transition-colors theme-text-secondary hover:text-[var(--text-primary)]"
+                className="flex items-center gap-2 text-gray-700 hover:text-blue-500 transition"
               >
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-700 text-xs font-semibold text-white">
+                <div className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-lg">
                   {user.username?.charAt(0).toUpperCase()}
                 </div>
-                <span>{user.username}</span>
+                <span className="text-sm">{user.username}</span>
               </Link>
               <button
                 onClick={handleLogout}
-                className="btn-secondary !px-3 !py-1.5"
+                className="px-4 py-2 text-white rounded-lg bg-red-600 "
               >
                 Logout
               </button>
-            </div>
+            </>
           ) : (
             <>
-              <Link to="/login" className="btn-ghost">
+              <Link to="/login" className="btn-secondary">
                 Login
               </Link>
-              <Link to="/register" className="btn-primary !px-4 !py-1.5">
-                Sign Up
+              <Link to="/register" className="btn-primary">
+                Register
               </Link>
             </>
           )}
         </div>
 
-        <button
-          className="theme-text-secondary transition-colors hover:text-[var(--text-primary)] md:hidden"
-          onClick={() => setMenuOpen((open) => !open)}
-          type="button"
-          aria-label="Toggle menu"
-        >
-          {menuOpen ? (
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          ) : (
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          )}
-        </button>
-      </div>
-
-      {menuOpen && (
-        <div
-          className="flex flex-col gap-2 border-t px-4 py-3 md:hidden"
-          style={{
-            borderColor: "var(--border-color)",
-            backgroundColor: "var(--bg-main)",
-          }}
-        >
-          <Link to="/explore" onClick={() => setMenuOpen(false)} className="btn-ghost !px-0 text-left">
-            Explore
-          </Link>
+        {/* Mobile menu button */}
+        <div className="md:hidden">
           <button
-            onClick={() => {
-              handleThemeToggle();
-              setMenuOpen(false);
-            }}
-            className="btn-ghost !px-0 text-left"
-            type="button"
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="text-gray-700 hover:text-blue-500"
           >
-            <span className="inline-flex items-center gap-2">
-              <MaterialIcon
-                name={theme === "dark" ? "light_mode" : "dark_mode"}
-                className="h-4 w-4"
-                filled={true}
-              />
-              Switch to {theme === "dark" ? "light" : "dark"} mode
-            </span>
+            {menuOpen ? (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                height="24px"
+                viewBox="0 -960 960 960"
+                width="24px"
+                fill="#1f1f1f"
+              >
+                <path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z" />
+              </svg>
+            ) : (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                height="24px"
+                viewBox="0 -960 960 960"
+                width="24px"
+                fill="#1f1f1f"
+              >
+                <path d="M120-240v-80h720v80H120Zm0-200v-80h720v80H120Zm0-200v-80h720v80H120Z" />
+              </svg>
+            )}
           </button>
-          {user ? (
-            <>
-              <Link to="/my-prompts" onClick={() => setMenuOpen(false)} className="btn-ghost !px-0 text-left">
-                My Prompts
-              </Link>
-              <Link to="/create" onClick={() => setMenuOpen(false)} className="btn-ghost !px-0 text-left">
-                <span className="inline-flex items-center gap-2">
-                  <MaterialIcon name="add_circle" className="h-4 w-4" filled={true} />
-                  New Prompt
-                </span>
-              </Link>
-              <Link to="/profile" onClick={() => setMenuOpen(false)} className="btn-ghost !px-0 text-left">
-                Profile ({user.username})
-              </Link>
-              <button onClick={handleLogout} className="btn-ghost !px-0 text-left" type="button">
-                Logout
-              </button>
-            </>
-          ) : (
-            <>
-              <Link to="/login" onClick={() => setMenuOpen(false)} className="btn-ghost !px-0 text-left">
-                Login
-              </Link>
-              <Link to="/register" onClick={() => setMenuOpen(false)} className="btn-ghost !px-0 text-left">
-                Sign Up
-              </Link>
-            </>
-          )}
         </div>
-      )}
+
+        {/* Mobile menu */}
+        {menuOpen && (
+          <div className="absolute top-full left-0 right-0 bg-white border-b border-gray-200 md:hidden">
+            <div className="px-4 py-4 space-y-3">
+              <Link to="/explore" className="block text-gray-700">
+                Explore
+              </Link>
+              {user && (
+                <>
+                  <Link to="/my-prompts" className="block text-gray-700">
+                    My Prompts
+                  </Link>
+                  <Link to="/create" className="block text-gray-700">
+                    New Prompt
+                  </Link>
+                  <Link to="/profile" className="block text-gray-700">
+                    Profile
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="block w-full text-left text-gray-700"
+                  >
+                    Logout
+                  </button>
+                </>
+              )}
+              {!user && (
+                <>
+                  <Link to="/login" className="block text-gray-700">
+                    Login
+                  </Link>
+                  <Link to="/register" className="block text-gray-700">
+                    Register
+                  </Link>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </nav>
   );
-};
+}
 
 export default Navbar;

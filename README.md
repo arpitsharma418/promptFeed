@@ -9,7 +9,7 @@ The project uses a React frontend and an Express/MongoDB API. Users can create a
 - Frontend: React, Vite, Tailwind CSS, React Router
 - Backend: Node.js, Express
 - Database: MongoDB with Mongoose
-- Auth: JWT, bcryptjs
+- Auth: JWT in HTTP-only cookies, bcryptjs
 - Client HTTP: Axios
 
 ## Repository Layout
@@ -39,7 +39,7 @@ The project uses a React frontend and an Express/MongoDB API. Users can create a
 
 ## Features
 
-- JWT-based authentication
+- Cookie-based JWT authentication
 - Prompt creation, editing, and deletion
 - Explore page with search, category filtering, and sort options
 - Likes and usage tracking
@@ -118,8 +118,9 @@ Backend: `http://localhost:5000`
 
 | Method | Route | Description |
 | --- | --- | --- |
-| `POST` | `/api/auth/register` | Create a new user |
-| `POST` | `/api/auth/login` | Authenticate and return a token |
+| `POST` | `/api/auth/register` | Create a new user, set auth cookie, and return user info |
+| `POST` | `/api/auth/login` | Authenticate, set auth cookie, and return user info |
+| `POST` | `/api/auth/logout` | Clear the auth cookie |
 | `GET` | `/api/auth/me` | Get the current authenticated user |
 | `PUT` | `/api/auth/profile` | Update profile fields |
 
@@ -174,7 +175,7 @@ npm run build
 
 - The frontend expects the API base URL from `VITE_API_URL`.
 - The backend uses `CLIENT_URL` for CORS.
-- User auth state is stored in local storage on the client.
+- User auth state is restored from `/api/auth/me`; the JWT is stored in an HTTP-only backend cookie.
 - Homepage stats are fetched from the API and reflect live database counts.
 
 ## Troubleshooting
@@ -194,7 +195,3 @@ npm run build
 
 - Change `PORT` in `backend/.env`
 - Update `VITE_API_URL` if the backend port changes locally
-
-## License
-
-This project is currently unlicensed. Add a license file if you plan to distribute it publicly.

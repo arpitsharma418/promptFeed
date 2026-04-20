@@ -1,19 +1,18 @@
-// Prompt Controller - handles all prompt CRUD operations
-const Prompt = require("../models/Prompt");
-const User = require("../models/User");
+import Prompt from "../models/Prompt.js";
+import User from "../models/User.js";
 
-// @desc    Get all prompts (with optional search/filter)
-// @route   GET /api/prompts
-// @access  Public
-const getPrompts = async (req, res) => {
+// Get all prompts
+export const getPrompts = async (req, res) => {
   try {
     const { search, category, sort } = req.query;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
 
-    // Build filter object
+    const skip = (page - 1) * limit;
+
     let filter = {};
 
     if (search) {
-      // Search in title, content, and tags
       filter.$or = [
         { title: { $regex: search, $options: "i" } },
         { description: { $regex: search, $options: "i" } },
@@ -25,112 +24,111 @@ const getPrompts = async (req, res) => {
       filter.category = category;
     }
 
-    // Sort options
-    let sortOption = { createdAt: -1 }; // Default: newest first
-    if (sort === "popular") sortOption = { likes: -1 };
-    if (sort === "most-used") sortOption = { usageCount: -1 };
+    let sortBy = { createdAt: -1 };
+    if (sort === "popular") {
+      sortBy = { likes: -1 };
+    }
+    if (sort === "most-used") {
+      sortBy = { usageCount: -1 };
+    }
 
     const prompts = await Prompt.find(filter)
-      .sort(sortOption)
-      .populate("author", "username email") // Get author's username
-      .limit(50); // Limit to 50 prompts at a time
+      .sort(sortBy)
+      .populate("author", "username")
+      .skip(skip)
+      .limit(limit);
 
-    res.json(prompts);
-  } catch (error) {
-    console.error("Get prompts error:", error.message);
-    res.status(500).json({ message: "Error fetching prompts" });
+    const total = await Prompt.countDocuments();
+
+    res.json({
+      data: prompts,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+    });
+  } catch (err) {
+    console.log("Error in fetching prompts: " + err);
+    res.status(500).json({ message: "Server Error" });
   }
 };
 
-// @desc    Get public overview stats
-// @route   GET /api/prompts/stats/overview
-// @access  Public
-const getPromptStats = async (req, res) => {
+// Get stats about prompts
+export const getPromptStats = async (req, res) => {
   try {
-    const [promptCount, userCount, categories] = await Promise.all([
-      Prompt.countDocuments(),
-      User.countDocuments(),
-      Prompt.distinct("category"),
-    ]);
+    const promptCount = await Prompt.countDocuments();
+
+    const categories = await Prompt.distinct("category");
+
+    const userCount = await User.countDocuments();
 
     res.json({
       promptsShared: promptCount,
-      categories: categories.filter(Boolean).length,
+      categories: categories.length,
       users: userCount,
     });
-  } catch (error) {
-    console.error("Get prompt stats error:", error.message);
-    res.status(500).json({ message: "Error fetching prompt stats" });
+  } catch (err) {
+    console.log("Error in getting stats: " + err);
+    res.status(500).json({ message: "Server Error" });
   }
 };
 
-// @desc    Get a single prompt by ID
-// @route   GET /api/prompts/:id
-// @access  Public
-const getPromptById = async (req, res) => {
+// Get a single prompt by its ID
+export const getPromptById = async (req, res) => {
   try {
-    const prompt = await Prompt.findById(req.params.id).populate(
-      "author",
-      "username bio"
-    );
+    const prompt = await Prompt.findById(req.params.id).populate("author");
 
     if (!prompt) {
       return res.status(404).json({ message: "Prompt not found" });
     }
 
     res.json(prompt);
-  } catch (error) {
-    res.status(500).json({ message: "Error fetching prompt" });
+  } catch (err) {
+    console.log("Error in getting prompt by its ID: " + err);
+    res.status(500).json({ message: "Server Error" });
   }
 };
 
-// @desc    Create a new prompt
-// @route   POST /api/prompts
-// @access  Private (requires login)
-const createPrompt = async (req, res) => {
+// Create a new prompt
+export const createPrompt = async (req, res) => {
   const { title, content, description, category, tags } = req.body;
 
-  // Basic validation
   if (!title || !content) {
     return res.status(400).json({ message: "Title and content are required" });
   }
 
   try {
-    // Process tags - split by comma if string
-    let processedTags = [];
+    let tagsArray = [];
     if (tags) {
-      processedTags =
-        typeof tags === "string"
-          ? tags
-              .split(",")
-              .map((t) => t.trim())
-              .filter(Boolean)
-          : tags;
+      if (typeof tags === "string") {
+        tagsArray = tags
+          .split(",")
+          .map((t) => t.trim())
+          .filter((t) => t);
+      } else {
+        tagsArray = tags;
+      }
     }
 
-    const prompt = await Prompt.create({
-      title,
-      content,
-      description,
-      category: category || "Other",
-      tags: processedTags,
-      author: req.user._id, // req.user is set by protect middleware
+    // Create the prompt
+    const newPrompt = await Prompt.create({
+      title: title,
+      content: content,
+      description: description || "",
+      category: category,
+      tags: tagsArray,
+      author: req.user._id,
     });
 
-    // Populate author info before sending back
-    await prompt.populate("author", "username");
+    await newPrompt.populate("author", "username");
 
-    res.status(201).json(prompt);
-  } catch (error) {
-    console.error("Create prompt error:", error.message);
-    res.status(500).json({ message: "Error creating prompt" });
+    res.status(201).json(newPrompt);
+  } catch (err) {
+    console.log("Error in creating prompt: " + err);
+    res.status(500).json({ message: "Server Error" });
   }
 };
 
-// @desc    Update a prompt
-// @route   PUT /api/prompts/:id
-// @access  Private (only author can update)
-const updatePrompt = async (req, res) => {
+// Update a prompt
+export const updatePrompt = async (req, res) => {
   try {
     const prompt = await Prompt.findById(req.params.id);
 
@@ -138,42 +136,50 @@ const updatePrompt = async (req, res) => {
       return res.status(404).json({ message: "Prompt not found" });
     }
 
-    // Check if logged-in user is the author
+    // Check if the user is the author
     if (prompt.author.toString() !== req.user._id.toString()) {
       return res
         .status(403)
         .json({ message: "You can only edit your own prompts" });
     }
 
-    const { title, content, description, category, tags } = req.body;
-
-    // Update fields
-    prompt.title = title || prompt.title;
-    prompt.content = content || prompt.content;
-    prompt.description = description ?? prompt.description;
-    prompt.category = category || prompt.category;
-    if (tags) {
-      prompt.tags =
-        typeof tags === "string"
-          ? tags
-              .split(",")
-              .map((t) => t.trim())
-              .filter(Boolean)
-          : tags;
+    // Update the fields
+    if (req.body.title) {
+      prompt.title = req.body.title;
+    }
+    if (req.body.content) {
+      prompt.content = req.body.content;
+    }
+    if (req.body.description !== undefined) {
+      prompt.description = req.body.description;
+    }
+    if (req.body.category) {
+      prompt.category = req.body.category;
+    }
+    if (req.body.tags) {
+      if (typeof req.body.tags === "string") {
+        prompt.tags = req.body.tags
+          .split(",")
+          .map((t) => t.trim())
+          .filter((t) => t);
+      } else {
+        prompt.tags = req.body.tags;
+      }
     }
 
+    // Save the updated prompt
     const updated = await prompt.save();
     await updated.populate("author", "username");
+
     res.json(updated);
-  } catch (error) {
-    res.status(500).json({ message: "Error updating prompt" });
+  } catch (err) {
+    console.log("Error in update prompt: " + err);
+    res.status(500).json({ message: "Server Error" });
   }
 };
 
-// @desc    Delete a prompt
-// @route   DELETE /api/prompts/:id
-// @access  Private (only author can delete)
-const deletePrompt = async (req, res) => {
+// Delete a prompt
+export const deletePrompt = async (req, res) => {
   try {
     const prompt = await Prompt.findById(req.params.id);
 
@@ -181,24 +187,22 @@ const deletePrompt = async (req, res) => {
       return res.status(404).json({ message: "Prompt not found" });
     }
 
-    // Check if logged-in user is the author
     if (prompt.author.toString() !== req.user._id.toString()) {
       return res
         .status(403)
         .json({ message: "You can only delete your own prompts" });
     }
+    await Prompt.findByIdAndDelete(req.params.id);
 
-    await prompt.deleteOne();
-    res.json({ message: "Prompt deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ message: "Error deleting prompt" });
+    res.json({ message: "Prompt deleted" });
+  } catch (err) {
+    console.log("Error in delete prompt: " + err);
+    res.status(500).json({ message: "Server Error" });
   }
 };
 
-// @desc    Like or unlike a prompt
-// @route   PUT /api/prompts/:id/like
-// @access  Private
-const likePrompt = async (req, res) => {
+// Like or unlike the prompt
+export const likePrompt = async (req, res) => {
   try {
     const prompt = await Prompt.findById(req.params.id);
 
@@ -207,63 +211,60 @@ const likePrompt = async (req, res) => {
     }
 
     const userId = req.user._id;
-    const alreadyLiked = prompt.likes.includes(userId);
 
-    if (alreadyLiked) {
-      // Unlike - remove user from likes array
+    const userAlreadyLiked = prompt.likes.some(
+      (id) => id.toString() === userId.toString(),
+    );
+
+    if (userAlreadyLiked) {
       prompt.likes = prompt.likes.filter(
-        (id) => id.toString() !== userId.toString()
+        (id) => id.toString() !== userId.toString(),
       );
     } else {
-      // Like - add user to likes array
       prompt.likes.push(userId);
     }
 
     await prompt.save();
-    res.json({ likes: prompt.likes.length, liked: !alreadyLiked });
-  } catch (error) {
-    res.status(500).json({ message: "Error updating like" });
+
+    res.json({
+      likes: prompt.likes.length,
+      liked: !userAlreadyLiked,
+    });
+  } catch (err) {
+    console.log("Error in Liking prompt: " + err);
+    res.status(500).json({ message: "Server Error" });
   }
 };
 
-// @desc    Increment usage count when user copies prompt
-// @route   PUT /api/prompts/:id/use
-// @access  Public
-const usePrompt = async (req, res) => {
+// Increment usage count when user copies
+export const usePrompt = async (req, res) => {
   try {
-    const prompt = await Prompt.findByIdAndUpdate(
-      req.params.id,
-      { $inc: { usageCount: 1 } },
-      { new: true }
-    );
+    const prompt = await Prompt.findById(req.params.id);
+
+    if (!prompt) {
+      return res.status(404).json({ message: "Prompt not found" });
+    }
+
+    prompt.usageCount = prompt.usageCount + 1;
+    await prompt.save();
+
     res.json({ usageCount: prompt.usageCount });
-  } catch (error) {
-    res.status(500).json({ message: "Error updating usage count" });
+  } catch (err) {
+    console.log("Error in using prompt: " + err);
+    res.status(500).json({ message: "Server Error" });
   }
 };
 
-// @desc    Get prompts by logged-in user
-// @route   GET /api/prompts/my-prompts
-// @access  Private
-const getMyPrompts = async (req, res) => {
+// Get my prompts
+export const getMyPrompts = async (req, res) => {
   try {
     const prompts = await Prompt.find({ author: req.user._id })
       .sort({ createdAt: -1 })
       .populate("author", "username");
-    res.json(prompts);
-  } catch (error) {
-    res.status(500).json({ message: "Error fetching your prompts" });
-  }
-};
 
-module.exports = {
-  getPrompts,
-  getPromptStats,
-  getPromptById,
-  createPrompt,
-  updatePrompt,
-  deletePrompt,
-  likePrompt,
-  usePrompt,
-  getMyPrompts,
+    res.json(prompts);
+  } catch (err) {
+    console.log("Error in get my prompts: " + err);
+    res.status(500).json({ message: "Server Error" });
+  }
 };

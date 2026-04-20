@@ -1,7 +1,6 @@
-// Prompt Routes
-const express = require("express");
-const router = express.Router();
-const {
+import express from "express";
+import { validate } from "../middleware/authMiddleware.js";
+import {
   getPrompts,
   getPromptStats,
   getPromptById,
@@ -11,20 +10,18 @@ const {
   likePrompt,
   usePrompt,
   getMyPrompts,
-} = require("../controllers/promptController");
-const { protect } = require("../middleware/authMiddleware");
+} from "../controllers/promptController.js";
 
-// Public routes
+const router = express.Router();
+
 router.get("/", getPrompts);
 router.get("/stats/overview", getPromptStats);
 router.get("/:id", getPromptById);
 router.put("/:id/use", usePrompt);
+router.get("/user/my-prompts", validate, getMyPrompts);
+router.post("/", validate, createPrompt);
+router.put("/:id", validate, updatePrompt);
+router.delete("/:id", validate, deletePrompt);
+router.put("/:id/like", validate, likePrompt);
 
-// Protected routes (require login)
-router.get("/user/my-prompts", protect, getMyPrompts);
-router.post("/", protect, createPrompt);
-router.put("/:id", protect, updatePrompt);
-router.delete("/:id", protect, deletePrompt);
-router.put("/:id/like", protect, likePrompt);
-
-module.exports = router;
+export default router;

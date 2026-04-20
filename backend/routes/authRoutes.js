@@ -1,15 +1,19 @@
-// Auth Routes
-const express = require("express");
-const router = express.Router();
-const { register, login, getMe, updateProfile } = require("../controllers/authController");
-const { protect } = require("../middleware/authMiddleware");
+import express from "express";
+import {
+  register,
+  login,
+  logout,
+  getMe,
+  updateProfile,
+} from "../controllers/authController.js";
+import { validate } from "../middleware/authMiddleware.js";
 
-// Public routes
+const router = express.Router();
+
 router.post("/register", register);
 router.post("/login", login);
+router.post("/logout", logout);
+router.get("/me", validate, getMe);
+router.put("/profile", validate, updateProfile);
 
-// Protected routes (require login)
-router.get("/me", protect, getMe);
-router.put("/profile", protect, updateProfile);
-
-module.exports = router;
+export default router;
