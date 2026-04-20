@@ -119,7 +119,7 @@ export const createPrompt = async (req, res) => {
       author: req.user._id,
     });
 
-    await newPrompt.populate("author", "username", "-password");
+    await newPrompt.populate("author", "username");
 
     res.status(201).json(newPrompt);
   } catch (err) {
